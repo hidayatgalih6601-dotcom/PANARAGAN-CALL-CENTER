@@ -286,10 +286,112 @@ body.admin-full-mode>.app,body.admin-full-mode .app{display:none!important}
 </div>
 <div class="toast" id="toast"></div>
 
+<!-- Firebase Realtime Database SDK -->
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-database-compat.js"></script>
+
 <script>
 const $ = s => document.querySelector(s);
 const modal = $('#modal');
 const backdrop = $('#backdrop');
+
+// ===== Firebase Realtime Database sync (shared between public app and admin) =====
+// IMPORTANT: production use requires restrictive Database Rules and real admin authentication.
+(function initPanaraganRealtimeSync(){
+  const keys = ['pnrReports','pnrKamtibmasReports','pnrNews','pnrChatMessages'];
+  const databaseURL = 'https://panaragan-call-center-default-rtdb.asia-southeast1.firebasedatabase.app';
+  const firebaseConfig = {
+    apiKey: 'AIzaSyCqeWS4DClsYoKlLBpVlkTaOsc4f8-X6ic',
+    authDomain: 'panaragan-call-center.firebaseapp.com',
+    databaseURL,
+    projectId: 'panaragan-call-center',
+    storageBucket: 'panaragan-call-center.firebasestorage.app',
+    messagingSenderId: '1003581002811',
+    appId: '1:1003581002811:web:efc5e7e136dd8745b2381e',
+    measurementId: 'G-CY5CSPKJ7J'
+  };
+  const status = document.createElement('div');
+  status.id = 'pnrFirebaseStatus';
+  status.textContent = 'Menghubungkan ke database…';
+  status.style.cssText = 'position:fixed;z-index:99999;right:10px;bottom:10px;padding:7px 11px;border-radius:9px;background:#263548;color:#fff;font:12px/1.35 Arial,sans-serif;box-shadow:0 2px 10px #0002;max-width:260px';
+  document.addEventListener('DOMContentLoaded',()=>{ if(!document.getElementById('pnrFirebaseStatus')) document.body.appendChild(status); });
+  function showStatus(message, color){
+    status.textContent = message;
+    status.style.background = color || '#263548';
+    if (!status.isConnected && document.body) document.body.appendChild(status);
+  }
+  if (!window.firebase || !firebase.database) {
+    showStatus('Firebase gagal dimuat. Periksa koneksi internet.', '#9b2c2c');
+    return;
+  }
+  try {
+    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+    const originalSetItem = Storage.prototype.setItem;
+    let applyingRemote = false;
+    const ready = Object.create(null);
+    const pending = Object.create(null);
+    let failed = false;
+
+    // Keep existing app functions unchanged; mirror their four data keys to RTDB.
+    Storage.prototype.setItem = function(key, value) {
+      originalSetItem.call(this, key, value);
+      if (this !== window.localStorage || !keys.includes(String(key)) || applyingRemote) return;
+      if (!ready[key]) { pending[key] = String(value); return; }
+      db.ref(key).set(JSON.parse(String(value))).catch(err => {
+        failed = true;
+        showStatus('Firebase: gagal menyimpan data. Periksa Rules.', '#9b2c2c');
+        console.error('Panaragan Firebase write error:', err);
+      });
+    };
+
+    keys.forEach(key => {
+      db.ref(key).on('value', snapshot => {
+        const remote = snapshot.val();
+        ready[key] = true;
+        if (Object.prototype.hasOwnProperty.call(pending, key)) {
+          // A user action made before the first server response: preserve that action.
+          const localPending = pending[key];
+          delete pending[key];
+          let parsed;
+          try { parsed = JSON.parse(localPending); } catch (_) { parsed = []; }
+          db.ref(key).set(parsed).catch(err => {
+            failed = true;
+            showStatus('Firebase: gagal menyimpan data. Periksa Rules.', '#9b2c2c');
+            console.error('Panaragan Firebase initial write error:', err);
+          });
+          return;
+        }
+        if (remote !== null) {
+          applyingRemote = true;
+          try { originalSetItem.call(window.localStorage, key, JSON.stringify(remote)); }
+          finally { applyingRemote = false; }
+        } else {
+          // First use: seed this database key only when this browser already has local data.
+          let local = null;
+          try { local = JSON.parse(window.localStorage.getItem(key) || 'null'); } catch (_) {}
+          if (local !== null) {
+            db.ref(key).set(local).catch(err => {
+              failed = true;
+              showStatus('Firebase: gagal menyimpan data. Periksa Rules.', '#9b2c2c');
+              console.error('Panaragan Firebase seed error:', err);
+            });
+          }
+        }
+        if (!failed && keys.every(k => ready[k])) showStatus('Firebase tersambung · data real-time', '#176b46');
+      }, err => {
+        failed = true;
+        showStatus('Firebase ditolak. Periksa Database Rules.', '#9b2c2c');
+        console.error('Panaragan Firebase read error:', err);
+      });
+    });
+    window.pnrFirebaseDatabase = db;
+  } catch (err) {
+    showStatus('Firebase gagal diinisialisasi.', '#9b2c2c');
+    console.error('Panaragan Firebase init error:', err);
+  }
+})();
+// ===== End Firebase sync =====
 
 // Persyaratan layanan diambil dari dokumen PDF yang diberikan pengguna.
 const services = [
