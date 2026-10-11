@@ -1,0 +1,14 @@
+{
+  "name": "Panaragan Call Center",
+  "short_name": "Panaragan",
+  "description": "Pelayanan warga Kelurahan Panaragan, Kota Bogor",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#eef7ff",
+  "theme_color": "#0756c9",
+  "icons": [
+    {"src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any"},
+    {"src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any"}
+  ]
+}
