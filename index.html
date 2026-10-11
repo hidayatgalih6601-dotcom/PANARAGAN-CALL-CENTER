@@ -634,8 +634,8 @@ let loginMode = 'sikatpa';
 function openAdminPortal(){
   loginMode='sikatpa';
   modal.className='modal admin-modal';
-  modal.innerHTML=`<div class="admin-brand"><img src="${document.querySelector('.kamtibmas-card-logo')?.src||''}" alt="Logo SIKATPA"><h2>PORTAL ADMIN SIKATPA</h2><p>Akses terbatas untuk melihat dan mengelola laporan Kamtibmas saja.</p></div>
-  <form class="admin-login" onsubmit="adminLogin(event)"><div class="field"><label>Username SIKATPA</label><input id="adminUser" autocomplete="username" required placeholder="Masukkan username SIKATPA"></div><div class="field" style="margin-top:12px"><label>Password</label><input id="adminPass" type="password" autocomplete="current-password" required placeholder="Masukkan password"></div><div class="modal-actions"><button type="button" class="admin-btn" onclick="closeModal();modal.className='modal'">Kembali ke Pelayanan Warga</button><button class="gold-btn">Masuk SIKATPA</button></div><div id="adminError" class="admin-error"></div></form>
+  modal.innerHTML=`<div class="admin-brand"><img src="${document.querySelector('.kamtibmas-card-logo')?.src||''}" alt="Logo SIKATPA"><h2>LOGIN PETUGAS KAMTIBMAS</h2><p>Akses khusus untuk melihat dan mengelola laporan Kamtibmas saja.</p></div>
+  <form class="admin-login" onsubmit="adminLogin(event)"><div class="field"><label>Username Petugas Kamtibmas</label><input id="adminUser" autocomplete="username" required placeholder="Masukkan username petugas"></div><div class="field" style="margin-top:12px"><label>Password</label><input id="adminPass" type="password" autocomplete="current-password" required placeholder="Masukkan password"></div><div class="modal-actions"><button type="button" class="admin-btn" onclick="closeModal();modal.className='modal'">Kembali ke Pelayanan Warga</button><button class="gold-btn">Masuk Petugas Kamtibmas</button></div><div id="adminError" class="admin-error"></div></form>
   <div class="admin-note"><b>Akses SIKATPA terpisah</b><br>Login ini hanya menampilkan laporan Kamtibmas/SIKATPA. Data pengaduan umum dan dashboard admin utama tidak tersedia dari portal ini.</div>`;
   backdrop.classList.add('show');
 }
@@ -804,7 +804,27 @@ function updateClock(){
 }
 updateClock();setInterval(updateClock,1000);syncSettings();
 
-// Shortcut terpisah: Admin Utama = Ctrl+Shift+F12, portal SIKATPA = Ctrl+Shift+1.
+// Akses tersembunyi melalui logo Pemda Kota Bogor: 3 ketukan = Admin Utama, 5 ketukan = Petugas Kamtibmas.
+// Ketukan dihitung dalam satu rangkaian agar 5 ketukan tidak lebih dulu membuka Admin Utama.
+(function setupHiddenLogoAdminAccess(){
+  const logo=document.querySelector('.crest');
+  if(!logo) return;
+  let taps=0, tapTimer=null;
+  logo.style.cursor='default';
+  logo.style.webkitUserSelect='none';
+  logo.draggable=false;
+  logo.addEventListener('click',function(){
+    taps++;
+    if(tapTimer) clearTimeout(tapTimer);
+    tapTimer=setTimeout(function(){
+      const total=taps; taps=0; tapTimer=null;
+      if(total===3){ openOperatorPortal(); }
+      else if(total===5){ openAdminPortal(); }
+    },1000);
+  });
+})();
+
+// Shortcut komputer tetap dipertahankan: Admin Utama = Ctrl+Shift+F12, portal Petugas Kamtibmas = Ctrl+Shift+1.
 document.addEventListener('keydown',function(e){
   if(e.ctrlKey && e.shiftKey && e.key==='F12'){
     e.preventDefault();openOperatorPortal();
