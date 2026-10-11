@@ -310,15 +310,15 @@ const backdrop = $('#backdrop');
     appId: '1:1003581002811:web:efc5e7e136dd8745b2381e',
     measurementId: 'G-CY5CSPKJ7J'
   };
-  const status = document.createElement('div');
-  status.id = 'pnrFirebaseStatus';
-  status.textContent = 'Menghubungkan ke database…';
-  status.style.cssText = 'position:fixed;z-index:99999;right:10px;bottom:10px;padding:7px 11px;border-radius:9px;background:#263548;color:#fff;font:12px/1.35 Arial,sans-serif;box-shadow:0 2px 10px #0002;max-width:260px';
-  document.addEventListener('DOMContentLoaded',()=>{ if(!document.getElementById('pnrFirebaseStatus')) document.body.appendChild(status); });
+  // Status koneksi hanya dicatat di console, tidak ditampilkan kepada warga.
   function showStatus(message, color){
-    status.textContent = message;
-    status.style.background = color || '#263548';
-    if (!status.isConnected && document.body) document.body.appendChild(status);
+    if (message) console.info('[Panaragan]', message);
+  }
+  function refreshRealtimeChatViews(){
+    // RTDB on-value listener memperbarui tampilan chat tanpa reload halaman.
+    try { if (typeof renderCitizenChat === 'function') renderCitizenChat(); } catch (e) { console.warn('Refresh chat warga:', e); }
+    try { if (typeof renderAdminChatManager === 'function') renderAdminChatManager(); } catch (e) { console.warn('Refresh chat admin:', e); }
+    try { if (typeof renderAdminChatMessages === 'function') renderAdminChatMessages(); } catch (e) { console.warn('Refresh chat operator:', e); }
   }
   if (!window.firebase || !firebase.database) {
     showStatus('Firebase gagal dimuat. Periksa koneksi internet.', '#9b2c2c');
@@ -366,6 +366,7 @@ const backdrop = $('#backdrop');
           applyingRemote = true;
           try { originalSetItem.call(window.localStorage, key, JSON.stringify(remote)); }
           finally { applyingRemote = false; }
+          if (key === 'pnrChatMessages') refreshRealtimeChatViews();
         } else {
           // First use: seed this database key only when this browser already has local data.
           let local = null;
@@ -754,8 +755,8 @@ function replyToChat(i){const m=getCitizenChat()[i];if(!m)return;const name=docu
 function sendOperatorChat(e){e.preventDefault();const textMsg=document.getElementById('operatorChatText').value.trim(),name=document.getElementById('operatorChatName').value.trim();if(!textMsg)return;const msgs=getCitizenChat();const target=document.getElementById('operatorChatText').dataset.replyIndex;if(target!==undefined&&msgs[Number(target)]){msgs[Number(target)].reply=name+': '+textMsg;msgs[Number(target)].replyTime=new Date().toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'});delete document.getElementById('operatorChatText').dataset.replyIndex;}else{msgs.push({name,text:textMsg,time:new Date().toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'}),role:'operator'});}localStorage.setItem('pnrChatMessages',JSON.stringify(msgs.slice(-100)));document.getElementById('operatorChatText').value='';renderAdminChatMessages();showToast('Balasan tersimpan di browser ini');}
 function toggleCitizenChat(){const p=document.getElementById('citizenChatPanel');if(!p)return;p.style.display=p.style.display==='none'?'flex':'none';renderCitizenChat();}
 function getCitizenChat(){try{return JSON.parse(localStorage.getItem('pnrChatMessages')||'[]')}catch(e){return []}}
-function renderCitizenChat(){const el=document.getElementById('citizenChatMessages');if(!el)return;const name=(document.getElementById('citizenChatName')?.value||'').trim();const msgs=getCitizenChat().filter(m=>String(m.name||'Warga').trim().toLocaleLowerCase('id-ID')===(name||'').toLocaleLowerCase('id-ID'));el.innerHTML='<div class="chat-note">Chat pribadi Anda. Pesan tersimpan di browser ini; chat lintas perangkat memerlukan server bersama.</div>'+msgs.map(m=>{const isOp=m.role==='operator';return `<div class="chat-message" style="align-self:${isOp?'flex-start':'flex-end'};max-width:88%;background:${isOp?'#fff':'#d9fdd3'};border:0;border-radius:${isOp?'0 10px 10px 10px':'10px 0 10px 10px'};box-shadow:0 1px 1px #00000012;padding:9px 11px"><b style="display:block;font-size:11px;color:${isOp?'#075e54':'#38634b'};margin-bottom:4px">${isOp?'Operator Panaragan':safeText(m.name||name)} · ${safeText(m.time||'')}</b><span style="white-space:pre-wrap">${safeText(m.text||'')}</span>${m.reply?`<div style="margin-top:7px;padding-top:6px;border-top:1px solid #dce9dc;color:#075e54"><b>Balasan operator</b><div>${safeText(m.reply)}</div></div>`:''}</div>`}).join('')+(name&&!msgs.length?'<div style="margin:auto;background:#fff;padding:10px 14px;border-radius:10px;color:#667781;font-size:12px">Belum ada pesan. Mulai percakapan di sini.</div>':'');el.style.background='#efeae2';el.style.padding='14px';el.style.display='flex';el.style.flexDirection='column';el.style.gap='8px';el.scrollTop=el.scrollHeight;}
-function sendCitizenChat(e){e.preventDefault();const name=document.getElementById('citizenChatName').value.trim(),textMsg=document.getElementById('citizenChatText').value.trim();if(!name||!textMsg)return;const msgs=getCitizenChat();msgs.push({name,text:textMsg,time:new Date().toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'}),created:new Date().toISOString()});try{localStorage.setItem('pnrChatMessages',JSON.stringify(msgs.slice(-100)));document.getElementById('citizenChatText').value='';renderCitizenChat();showToast('Pesan tersimpan. Operator dapat melihatnya pada perangkat/browser yang sama.');}catch(err){showToast('Pesan tidak dapat disimpan.');}}
+function renderCitizenChat(){const el=document.getElementById('citizenChatMessages');if(!el)return;const name=(document.getElementById('citizenChatName')?.value||'').trim();const msgs=getCitizenChat().filter(m=>String(m.name||'Warga').trim().toLocaleLowerCase('id-ID')===(name||'').toLocaleLowerCase('id-ID'));el.innerHTML='<div class="chat-note">Chat pribadi Anda. Pesan dan balasan diperbarui otomatis secara real-time.</div>'+msgs.map(m=>{const isOp=m.role==='operator';return `<div class="chat-message" style="align-self:${isOp?'flex-start':'flex-end'};max-width:88%;background:${isOp?'#fff':'#d9fdd3'};border:0;border-radius:${isOp?'0 10px 10px 10px':'10px 0 10px 10px'};box-shadow:0 1px 1px #00000012;padding:9px 11px"><b style="display:block;font-size:11px;color:${isOp?'#075e54':'#38634b'};margin-bottom:4px">${isOp?'Operator Panaragan':safeText(m.name||name)} · ${safeText(m.time||'')}</b><span style="white-space:pre-wrap">${safeText(m.text||'')}</span>${m.reply?`<div style="margin-top:7px;padding-top:6px;border-top:1px solid #dce9dc;color:#075e54"><b>Balasan operator</b><div>${safeText(m.reply)}</div></div>`:''}</div>`}).join('')+(name&&!msgs.length?'<div style="margin:auto;background:#fff;padding:10px 14px;border-radius:10px;color:#667781;font-size:12px">Belum ada pesan. Mulai percakapan di sini.</div>':'');el.style.background='#efeae2';el.style.padding='14px';el.style.display='flex';el.style.flexDirection='column';el.style.gap='8px';el.scrollTop=el.scrollHeight;}
+function sendCitizenChat(e){e.preventDefault();const name=document.getElementById('citizenChatName').value.trim(),textMsg=document.getElementById('citizenChatText').value.trim();if(!name||!textMsg)return;const msgs=getCitizenChat();msgs.push({name,text:textMsg,time:new Date().toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'}),created:new Date().toISOString()});try{localStorage.setItem('pnrChatMessages',JSON.stringify(msgs.slice(-100)));document.getElementById('citizenChatText').value='';renderCitizenChat();showToast('Pesan terkirim. Balasan akan muncul otomatis di percakapan ini.');}catch(err){showToast('Pesan tidak dapat disimpan.');}}
 function getAdminChatThreads(){
  let msgs=[];try{msgs=JSON.parse(localStorage.getItem('pnrChatMessages')||'[]')}catch(e){msgs=[]}
  // Convert legacy inline replies into their own operator messages so each thread behaves like a real chat.
@@ -770,7 +771,7 @@ function renderAdminChatManager(){
  const selected=threads.find(t=>t.key===window.pnrAdminSelectedChat);
  host.innerHTML=`<div class="wa-admin-shell">
  <div class="wa-admin-top"><div><div class="wa-brand-dot">☎</div><div><h3>Chat Warga</h3><p>Panaragan Call Center · ${threads.length} percakapan</p></div></div><button type="button" onclick="renderAdminChatManager()" title="Muat ulang">↻</button></div>
- <div class="wa-admin-note">Tampilan chat bergaya WhatsApp. Percakapan tersimpan di browser ini; agar pesan warga dan admin berbeda perangkat saling terhubung, dibutuhkan server/database bersama.</div>
+ <div class="wa-admin-note">Tampilan chat bergaya WhatsApp. Pesan baru dan balasan diperbarui otomatis secara real-time.</div>
  <div class="wa-admin-layout"><aside class="wa-chat-list"><div class="wa-list-title">Percakapan</div>${threads.length?threads.map(t=>`<button type="button" class="wa-chat-person ${selected&&selected.key===t.key?'selected':''}" onclick="openAdminChatConversation('${encodeURIComponent(t.key)}')"><div class="wa-avatar">${safeText((t.name||'W').trim().charAt(0).toUpperCase())}</div><div class="wa-person-info"><div class="wa-person-line"><b>${safeText(t.name)}</b><small>${safeText(t.last.time||'')}</small></div><div class="wa-preview">${safeText(t.last.text||'Pesan')}</div><div class="wa-count">${t.messages.length} pesan</div></div></button>`).join(''):'<div class="wa-empty-list">Belum ada pesan masuk.</div>'}</aside>
  <section class="wa-chat-window"><header class="wa-thread-head"><div class="wa-avatar">${selected?safeText((selected.name||'W').trim().charAt(0).toUpperCase()):'☎'}</div><div><b>${selected?safeText(selected.name):'Pilih percakapan'}</b><small>${selected?'Percakapan warga':'Pilih warga dari daftar'}</small></div></header>
  <div id="adminChatThreadBody" class="wa-thread-body">${selected?selected.messages.map(m=>{const isOp=m.role==='operator';return `<div class="wa-bubble-row ${isOp?'outgoing':'incoming'}"><div class="wa-bubble ${isOp?'wa-outgoing':'wa-incoming'}">${!isOp?`<b class="wa-sender">${safeText(m.name||selected.name)}</b>`:''}<div class="wa-message-text">${safeText(m.text||'')}</div><div class="wa-message-time">${safeText(m.time||'')}</div></div></div>`}).join(''):'<div class="wa-no-thread">Pilih nama warga untuk membuka chat.</div>'}</div>
