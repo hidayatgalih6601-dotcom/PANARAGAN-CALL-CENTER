@@ -300,7 +300,7 @@ body.admin-full-mode>.app,body.admin-full-mode .app{display:none!important}
       <article class="card">
         <div class="card-icon">i</div>
         <h3>INFORMASI<br>LAYANAN</h3>
-        <p>Cari informasi seputar layanan Pemkot Bogor</p>
+        <p>Cari informasi seputar layanan Kelurahan Panaragan</p>
         <button onclick="openModal('info')" aria-label="Informasi layanan">›</button>
       </article>
       <article class="card">
@@ -522,6 +522,20 @@ const services = [
     'Fotocopy KK',
     'Fotocopy KTP',
     'Dokumen Llainnya'
+  ]},
+  {name:'Permohonan Ahli Waris', category:'Pelayanan Umum', groups:[
+    {title:'A. DOKUMEN KEPENDUDUKAN PEWARIS/ALMARHUM', items:[
+      'Buku/Surat/Akta Nikah',
+      'KTP-e',
+      'Kartu Keluarga',
+      'Akte Kematian / surat keterangan kematian'
+    ]},
+    {title:'B. DOKUMEN KEPENDUDUKAN PARA AHLI WARIS', items:[
+      'Buku nikah (jika ahli waris sudah menikah)',
+      'Akte Kelahiran / Ijazah Sekolah (jika ahli waris belum menikah)',
+      'KTP-e',
+      'Kartu Keluarga'
+    ]}
   ]}
 ];
 
@@ -602,7 +616,7 @@ function renderServices(){
 function showServiceRequirements(index){
   const s=services[index]; if(!s)return;
   modal.innerHTML=`<div class="modal-head"><div><p style="margin:0 0 5px;color:#0b79d7;font-weight:800">${s.category}</p><h2>📄 ${s.name}</h2><p>Persyaratan permohonan layanan</p></div><button class="modal-close" onclick="openModal('info')">×</button></div>
-  <div style="background:#f1f7ff;border:1px solid #d8e5f6;border-radius:14px;padding:16px"><h3 style="margin-top:0;color:#0d3d84">Daftar Persyaratan</h3><ol style="padding-left:22px;line-height:1.7">${s.requirements.map(r=>`<li>${r}</li>`).join('')}</ol></div>
+  <div style="background:#f1f7ff;border:1px solid #d8e5f6;border-radius:14px;padding:16px"><h3 style="margin-top:0;color:#0d3d84">Daftar Persyaratan</h3>${s.groups ? s.groups.map(g=>`<section style="margin:0 0 16px"><h4 style="margin:0 0 8px;color:#0d3d84">${g.title}</h4><ol style="padding-left:22px;line-height:1.7">${g.items.map(r=>`<li>${r}</li>`).join('')}</ol></section>`).join('') : `<ol style="padding-left:22px;line-height:1.7">${s.requirements.map(r=>`<li>${r}</li>`).join('')}</ol>`}</div>
   <div class="modal-actions"><button class="secondary" onclick="openModal('info')">← Kembali ke Daftar</button><button class="primary" onclick="closeModal()">Selesai</button></div>`;
 }
 function submitComplaint(e){
