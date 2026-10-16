@@ -556,6 +556,12 @@ const services = [
     'Fotocopy KTP',
     'Dokumen Llainnya'
   ]},
+  {name:'Surat Keterangan DTSN', category:'Pelayanan Umum', requirements:[
+    'Surat keterangan dari sekolah',
+    'Pengantar RT',
+    'Foto Copy Kartu Keluarga',
+    'Foto Copy KTP'
+  ]},
   {name:'Permohonan Ahli Waris', category:'Pelayanan Umum', groups:[
     {title:'A. DOKUMEN KEPENDUDUKAN PEWARIS/ALMARHUM', items:[
       'Buku/Surat/Akta Nikah',
@@ -588,6 +594,7 @@ function openModal(type){
         <div class="field"><label>Kategori</label><select id="cCat"><option>Infrastruktur</option><option>Kependudukan</option><option>Kesehatan</option><option>Pendidikan</option><option>Kebersihan</option><option>Lainnya</option></select></div>
         <div class="field"><label>Lokasi Kejadian</label><input id="cLoc" required placeholder="Kelurahan / lokasi"></div>
         <div class="field full"><label>Isi Laporan</label><textarea id="cText" required placeholder="Jelaskan keluhan atau aspirasi Anda secara singkat dan jelas"></textarea></div>
+        <div class="field full"><label>Foto Pendukung (opsional)</label><input id="cPhoto" type="file" accept="image/*"><small>Tambahkan foto terkait pengaduan jika diperlukan.</small></div>
       </div>
       <div class="modal-actions"><button type="button" class="secondary" onclick="closeModal()">Batal</button><button class="primary">Kirim Laporan</button></div>
     </form>`;
@@ -655,6 +662,10 @@ function openModal(type){
         <div class="external-service-item"><div><strong>A. Pajak Kendaraan Bermotor</strong><p>Informasi pajak kendaraan</p></div><a class="external-link-button" href="https://bapenda.jabarprov.go.id/infopkb/" target="_blank" rel="noopener noreferrer">Buka Layanan ↗</a></div>
         <div class="external-service-item"><div><strong>B. Pajak Bumi dan Bangunan (PBB)</strong><p>Cek layanan e-SPPT Kota Bogor</p></div><a class="external-link-button" href="https://layanan-bapenda.kotabogor.go.id/e-sppt/app/cek_esppt" target="_blank" rel="noopener noreferrer">Buka Layanan ↗</a></div>
       </section>
+      <section class="external-service-group"><h3>🤝 4. Pelayanan Bantuan Sosial</h3>
+        <div class="external-service-item"><div><strong>A. Cek Bantuan Sosial</strong><p>Cek informasi bantuan sosial dari Kemensos</p></div><a class="external-link-button" href="https://cekbansos.kemensos.go.id/" target="_blank" rel="noopener noreferrer">Buka Website ↗</a></div>
+        <div class="external-service-item"><div><strong>B. Pelindungan Sosial</strong><p>Akses layanan Pelindungan Sosial</p></div><a class="external-link-button" href="https://perlinsos.kemensos.go.id/login-ikd" target="_blank" rel="noopener noreferrer">Buka Website ↗</a></div>
+      </section>
     </div>`;
   backdrop.classList.add('show');
   if(type==='info') renderServices();
@@ -675,12 +686,15 @@ function showServiceRequirements(index){
   <div style="background:#f1f7ff;border:1px solid #d8e5f6;border-radius:14px;padding:16px"><h3 style="margin-top:0;color:#0d3d84">Daftar Persyaratan</h3>${s.groups ? s.groups.map((g,gi)=>`<section style="margin:0 0 16px"><h4 style="margin:0 0 8px;color:#0d3d84">${g.title}</h4><ol style="padding-left:22px;line-height:1.7">${g.items.map((r,ri)=>{const key=s.downloadRequirements&&s.downloadRequirements['group'+gi+':'+ri];return `<li>${r}${key?` <a href="${serviceDownloadFiles[key]}" download="${key==='waris'?'Surat_Pernyataan_Ahli_Waris.docx':'Surat_Pernyataan.docx'}" style="display:inline-block;margin-left:8px;padding:4px 9px;background:#e7f1ff;color:#075db5;border-radius:7px;font-size:12px;font-weight:700;text-decoration:none">⬇ Download surat</a>`:''}</li>`}).join('')}</ol></section>`).join('') : `<ol style="padding-left:22px;line-height:1.7">${s.requirements.map((r,ri)=>{const key=s.downloadRequirements&&s.downloadRequirements[ri];const linkKey=ri===5&&s.name==='Permohonan Surat Keterangan Kelahiran'?'lahir':key;return `<li>${r}${linkKey?` <a href="${serviceDownloadFiles[linkKey]}" download="${linkKey==='lahir'?'Surat_Pernyataan_Kelahiran.docx':'Surat_Pernyataan_Belum_Menikah.docx'}" style="display:inline-block;margin-left:8px;padding:4px 9px;background:#e7f1ff;color:#075db5;border-radius:7px;font-size:12px;font-weight:700;text-decoration:none">⬇ Download surat</a>`:''}</li>`}).join('')}</ol>`}</div>
   <div class="modal-actions"><button class="secondary" onclick="openModal('info')">← Kembali ke Daftar</button><button class="primary" onclick="closeModal()">Selesai</button></div>`;
 }
-function submitComplaint(e){
+async function submitComplaint(e){
   e.preventDefault();
+  const photoFile=$('#cPhoto')?.files?.[0];
+  let photoData='';
+  if(photoFile){if(!photoFile.type.startsWith('image/')){showToast('Pilih file foto/gambar.');return;}try{photoData=await imageToCompactDataURL(photoFile);}catch(err){showToast('Foto tidak dapat diproses. Coba gunakan foto lain.');return;}}
   const year=new Date().getFullYear();
   const n=(JSON.parse(localStorage.getItem('pnrReports')||'[]').length+1).toString().padStart(4,'0');
   const ticket=`PNR-${year}-${n}`;
-  const report={ticket,name:$('#cName').value,phone:$('#cPhone').value,category:$('#cCat').value,location:$('#cLoc').value,text:$('#cText').value,status:'Diterima',created:new Date().toISOString()};
+  const report={ticket,name:$('#cName').value,phone:$('#cPhone').value,category:$('#cCat').value,location:$('#cLoc').value,text:$('#cText').value,photo:photoData,photoName:photoFile?.name||'',status:'Diterima',created:new Date().toISOString()};
   const reports=JSON.parse(localStorage.getItem('pnrReports')||'[]');reports.push(report);localStorage.setItem('pnrReports',JSON.stringify(reports));
   modal.innerHTML=`<div class="modal-head"><div><h2>✅ Laporan Berhasil Dikirim</h2><p>Terima kasih atas partisipasi Anda.</p></div><button class="modal-close" onclick="closeModal()">×</button></div>
   <div class="result" style="display:block"><div>Nomor tiket Anda:</div><div style="font-size:27px;margin-top:5px">${ticket}</div><small>Simpan nomor ini untuk mengecek perkembangan laporan.</small></div>
@@ -813,9 +827,17 @@ function adminNav(page,el){document.querySelectorAll('.ad-nav a').forEach(a=>a.c
 function adminShowDetail(ticket,kind){const key=kind==='kamtibmas'?'pnrKamtibmasReports':'pnrReports';const r=JSON.parse(localStorage.getItem(key)||'[]').find(x=>x.ticket===ticket);if(!r){showToast('Detail laporan tidak ditemukan');return}alert('Tiket: '+(r.ticket||'')+'\nPelapor: '+(r.name||'')+'\nKategori: '+(r.category||'')+'\nLokasi: '+(r.location||'')+'\nKeterangan: '+(r.text||''))}
 function adminExportCSV(){const rows=[['Tiket','Sumber','Nama','Kontak','Kategori','Lokasi','Keterangan','Status','Tanggal'],...getAllAdminReports().map(r=>[r.ticket,r.source,r.name,r.phone,r.category,r.location,r.text,r.status,r.created])];const csv=rows.map(row=>row.map(v=>'"'+String(v??'').replaceAll('"','""')+'"').join(',')).join('\n');const url=URL.createObjectURL(new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8;'}));const a=document.createElement('a');a.href=url;a.download='laporan-panaragan.csv';a.click();URL.revokeObjectURL(url)}
 function adminBackToCitizen(){const root=document.getElementById('adminFullScreen');if(root)root.remove();document.body.classList.remove('admin-full-mode');currentAdmin=null;modal.className='modal';showToast('Kembali ke Pelayanan Warga')}
+function showAdminReportPhoto(ticket,kind){
+ const reports=kind==='kamtibmas'?JSON.parse(localStorage.getItem('pnrKamtibmasReports')||'[]'):JSON.parse(localStorage.getItem('pnrReports')||'[]');
+ const r=reports.find(x=>x.ticket===ticket);if(!r||!r.photo){showToast('Foto tidak ditemukan.');return;}
+ let box=document.getElementById('adminPhotoViewer');if(box)box.remove();
+ box=document.createElement('div');box.id='adminPhotoViewer';box.style.cssText='position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,.86);display:flex;align-items:center;justify-content:center;padding:24px';
+ box.innerHTML=`<div style="max-width:95vw;max-height:95vh;text-align:center;color:white"><button onclick="document.getElementById('adminPhotoViewer').remove()" style="float:right;padding:8px 14px;margin-bottom:8px">Tutup ✕</button><img src="${r.photo}" alt="Foto laporan ${safeText(ticket)}" style="display:block;max-width:90vw;max-height:78vh;object-fit:contain;margin:0 auto 12px"><a href="${r.photo}" download="${safeText(r.photoName||ticket+'-foto')}" style="display:inline-block;background:#fff;color:#0756c9;padding:10px 16px;border-radius:8px;text-decoration:none;font-weight:bold">⬇ Download Foto</a></div>`;
+ box.addEventListener('click',e=>{if(e.target===box)box.remove()});document.body.appendChild(box);
+}
 function adminRowsHTML(reports,isMain){
  if(!reports.length)return '<tr><td colspan="9">Belum ada laporan tersimpan di browser ini.</td></tr>';
- return reports.map(r=>`<tr data-search="${safeText([r.ticket,r.name,r.category,r.location,r.text,r.source].join(' ').toLowerCase())}"><td><b>${safeText(r.ticket)}</b><br><small>${safeText(r.source)}</small></td><td>${safeText(r.category)}</td><td>${safeText(r.name)}</td><td>${safeText(r.phone)}</td><td>${safeText(r.location)}</td><td>${safeText(r.text)}</td><td>${r.photo?`<a href="${r.photo}" target="_blank" rel="noopener" style="color:#ffd45a"><img src="${r.photo}" alt="Foto lokasi laporan" style="max-width:100px;max-height:80px;object-fit:cover;border-radius:8px;display:block">Lihat foto</a>`:'—'}</td><td>${safeText(new Date(r.created).toLocaleString('id-ID'))}</td><td><select onchange="updateReportStatus('${safeText(r.ticket)}','${r.source==='Kamtibmas'?'kamtibmas':'general'}',this.value)">${['Diterima','Diproses','Ditindaklanjuti','Selesai'].map(st=>`<option ${((r.status||'Diterima')===st)?'selected':''}>${st}</option>`).join('')}</select></td></tr>`).join('');
+ return reports.map(r=>`<tr data-search="${safeText([r.ticket,r.name,r.category,r.location,r.text,r.source].join(' ').toLowerCase())}"><td><b>${safeText(r.ticket)}</b><br><small>${safeText(r.source)}</small></td><td>${safeText(r.category)}</td><td>${safeText(r.name)}</td><td>${safeText(r.phone)}</td><td>${safeText(r.location)}</td><td>${safeText(r.text)}</td><td>${r.photo?`<button type="button" onclick="showAdminReportPhoto('${safeText(r.ticket)}','${r.source==='Kamtibmas'?'kamtibmas':'general'}')" style="border:0;background:transparent;color:#0756c9;padding:0;text-align:left"><img src="${r.photo}" alt="Foto laporan" style="max-width:100px;max-height:80px;object-fit:cover;border-radius:8px;display:block">Klik foto untuk memperbesar</button>`:'—'}</td><td>${safeText(new Date(r.created).toLocaleString('id-ID'))}</td><td><select onchange="updateReportStatus('${safeText(r.ticket)}','${r.source==='Kamtibmas'?'kamtibmas':'general'}',this.value)">${['Diterima','Diproses','Ditindaklanjuti','Selesai'].map(st=>`<option ${((r.status||'Diterima')===st)?'selected':''}>${st}</option>`).join('')}</select></td></tr>`).join('');
 }
 function filterAdminRows(){const q=($('#adminSearch')?.value||'').toLowerCase();document.querySelectorAll('#adminRows tr').forEach(tr=>tr.style.display=(tr.dataset.search||'').includes(q)?'':'none');}
 function updateReportStatus(ticket,kind,status){
